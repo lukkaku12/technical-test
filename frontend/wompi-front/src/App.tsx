@@ -50,7 +50,7 @@ function App() {
   const initialTransactionId = useRef(transactionId)
   const selectedProduct =
     products.find((product) => product.id === selectedProductId) ?? null
-  const publicKey = import.meta.env.VITE_WOMPI_PUBLIC_KEY ?? ''
+  const publicKey = import.meta.env.VITE_PUBLIC_KEY ?? ''
 
   const stepLabel =
     currentStep >= 4

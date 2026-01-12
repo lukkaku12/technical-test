@@ -1,4 +1,4 @@
-# Wompi Frontend (React + Vite + TS)
+# Frontend (React + Vite + TS)
 
 This frontend implements Step 1 (product list) and Step 2 (checkout form sheet)
 of the flow. It uses Redux Toolkit to manage app state in a simple, beginner-
@@ -64,10 +64,12 @@ user clicks Continue. It checks:
 
 ## Environment
 
-The API base URL defaults to `http://localhost:3000`. You can override it with:
+Use `.env.template` as a starting point, then create a `.env` file with your values:
 
 ```
 VITE_API_BASE_URL=http://localhost:3000
+VITE_PUBLIC_KEY=pub_stagtest_xxx
+VITE_BASE_URL=
 ```
 
 ## Scripts

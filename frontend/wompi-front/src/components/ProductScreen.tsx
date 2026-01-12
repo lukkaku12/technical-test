@@ -26,11 +26,28 @@ const ProductScreen = ({
 
   return (
     <div className="product-grid">
-      {products.map((product) => {
+      {products.map((product, index) => {
         const isSelected = product.id === selectedProductId
+        const imageSrc = product.imageUrl || '/vite.svg'
+        const optimizedSrc = imageSrc.replace(/picsum\.photos\/seed\/([^/]+)\/\d+\/\d+/, 'picsum.photos/seed/$1/480/320')
+        const imageSet = imageSrc.includes('picsum.photos')
+          ? `${optimizedSrc} 480w, ${imageSrc} 600w`
+          : undefined
 
         return (
           <article className="product-card" key={product.id}>
+            <img
+              className="product-card-image"
+              src={optimizedSrc}
+              srcSet={imageSet}
+              sizes="(min-width: 768px) 360px, 90vw"
+              alt={product.name}
+              loading={index < 2 ? 'eager' : 'lazy'}
+              decoding="async"
+              fetchPriority={index < 1 ? 'high' : 'auto'}
+              width={320}
+              height={200}
+            />
             <div className="product-card-header">
               <h2 className="product-card-name">{product.name}</h2>
               <p className="product-card-price">{formatPrice(product.price)}</p>

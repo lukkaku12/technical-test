@@ -30,7 +30,7 @@ const CheckoutFormSheet = ({
     personalAuthToken,
   } = useAppSelector((state) => state.wompi)
   const brand = detectCardBrand(values.cardNumber)
-  const publicKey = import.meta.env.VITE_WOMPI_PUBLIC_KEY ?? ''
+  const publicKey = import.meta.env.VITE_PUBLIC_KEY ?? ''
   const canContinue =
     values.acceptTerms &&
     values.acceptPersonalAuth &&

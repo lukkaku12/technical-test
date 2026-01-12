@@ -7,6 +7,10 @@ import { loadPersistedState, savePersistedState } from './persist'
 
 // The Redux store is the main box that holds all app state.
 const persistedState = loadPersistedState()
+const checkoutInitial = checkoutReducer(undefined, { type: '@@INIT' })
+const formInitial = formReducer(undefined, { type: '@@INIT' })
+const wompiInitial = wompiReducer(undefined, { type: '@@INIT' })
+const transactionInitial = transactionReducer(undefined, { type: '@@INIT' })
 
 const shouldResetStep =
   !persistedState?.transaction?.transactionId &&
@@ -22,29 +26,21 @@ export const store = configureStore({
   preloadedState: persistedState
     ? {
         checkout: {
+          ...checkoutInitial,
           ...persistedState.checkout,
-          products: [],
-          status: 'idle',
-          errorMessage: null,
           currentStep: shouldResetStep ? 1 : persistedState.checkout.currentStep,
         },
         transaction: {
+          ...transactionInitial,
           ...persistedState.transaction,
-          pollStatus: 'idle',
-          lastStatus: null,
-          attempts: 0,
-          errorMessage: null,
         },
-        form: formReducer(undefined, { type: '@@INIT' }),
+        form: formInitial,
         wompi: {
-          ...wompiReducer(undefined, { type: '@@INIT' }),
+          ...wompiInitial,
           ...persistedState.wompi,
           acceptanceStatus: persistedState.wompi.acceptanceToken
             ? 'succeeded'
             : persistedState.wompi.acceptanceStatus,
-          tokenStatus: 'idle',
-          cardToken: null,
-          errorMessage: null,
         },
       }
     : undefined,

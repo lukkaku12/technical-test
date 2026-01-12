@@ -5,7 +5,7 @@ import { CreateTransactionUseCase } from './application/use-cases/create-transac
 import { GetTransactionUseCase } from './application/use-cases/get-transaction.usecase';
 import { PayTransactionUseCase } from './application/use-cases/pay-transaction.usecase';
 import { PAYMENT_GATEWAY } from './application/ports/payment-gateway.port';
-import { FakeWompiGateway } from './infrastructure/fake-wompi.gateway';
+import { WompiGateway } from './infrastructure/wompi.gateway';
 
 import { ProductModule } from '@/modules/product/product.module';
 import { CustomerModule } from '@/modules/customer/customer.module';
@@ -24,7 +24,7 @@ import { TransactionModule } from '@/modules/transaction/transaction.module';
     PayTransactionUseCase,
     {
       provide: PAYMENT_GATEWAY,
-      useClass: FakeWompiGateway,
+      useClass: WompiGateway,
     },
   ],
   exports: [],

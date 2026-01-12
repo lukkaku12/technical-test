@@ -6,8 +6,11 @@ export type PaymentResult = {
 
 export type PaymentRequest = {
   amount: number;
-  forceResult?: 'success' | 'failed';
-  errorMessage?: string;
+  customerEmail: string;
+  reference: string;
+  cardToken: string;
+  acceptanceToken: string;
+  acceptPersonalAuth: string;
 };
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');

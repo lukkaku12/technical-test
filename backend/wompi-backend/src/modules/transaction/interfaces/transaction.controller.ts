@@ -25,8 +25,9 @@ type CreateTransactionBody = {
 };
 
 type PayTransactionBody = {
-  success?: boolean;
-  errorMessage?: string;
+  cardToken: string;
+  acceptanceToken: string;
+  acceptPersonalAuth: string;
 };
 
 @Controller('transactions')

@@ -13,8 +13,9 @@ import { PAYMENT_GATEWAY } from '@/modules/checkout/application/ports/payment-ga
 import type { PaymentGatewayPort } from '@/modules/checkout/application/ports/payment-gateway.port';
 
 type PayTransactionInput = {
-  success?: boolean;
-  errorMessage?: string;
+  cardToken: string;
+  acceptanceToken: string;
+  acceptPersonalAuth: string;
 };
 
 @Injectable()
@@ -38,10 +39,21 @@ export class PayTransactionUseCase {
       throw new ConflictException('Transaction is not pending');
     }
 
+    if (
+      !payload?.cardToken ||
+      !payload?.acceptanceToken ||
+      !payload?.acceptPersonalAuth
+    ) {
+      throw new ConflictException('Missing payment credentials');
+    }
+
     const paymentResult = await this.paymentGateway.charge({
       amount: transaction.totalAmount,
-      forceResult: payload?.success === false ? 'failed' : 'success',
-      errorMessage: payload?.errorMessage,
+      customerEmail: transaction.customer.email,
+      reference: transaction.id,
+      cardToken: payload.cardToken,
+      acceptanceToken: payload.acceptanceToken,
+      acceptPersonalAuth: payload.acceptPersonalAuth,
     });
 
     if (paymentResult.success) {

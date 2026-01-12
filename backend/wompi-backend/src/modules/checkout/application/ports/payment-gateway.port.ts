@@ -1,5 +1,6 @@
 export type PaymentResult = {
   success: boolean;
+  status?: string;
   wompiReference?: string;
   errorMessage?: string;
 };

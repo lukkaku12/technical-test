@@ -38,6 +38,7 @@ export class CreateTransactionUseCase {
         message: 'customer.email is required',
       });
     }
+    const normalizedEmail = payload.customer.email.trim().toLowerCase();
 
     // Product availability is checked before any customer or transaction writes.
     const product = await this.productRepository.findById(payload.productId);
@@ -56,12 +57,39 @@ export class CreateTransactionUseCase {
 
     // Customer is upserted by email to keep checkout guest-based.
     const existingCustomer = await this.customerRepository.findByEmail(
-      payload.customer.email,
+      normalizedEmail,
     );
     const customer = existingCustomer
-      ? this.customerRepository.merge(existingCustomer, payload.customer)
-      : this.customerRepository.create(payload.customer);
-    await this.customerRepository.save(customer);
+      ? this.customerRepository.merge(existingCustomer, {
+          ...payload.customer,
+          email: normalizedEmail,
+        })
+      : this.customerRepository.create({
+          ...payload.customer,
+          email: normalizedEmail,
+        });
+
+    try {
+      await this.customerRepository.save(customer);
+    } catch (error: unknown) {
+      const maybeError = error as { code?: string };
+      if (maybeError?.code !== '23505') {
+        throw error;
+      }
+
+      const retryCustomer = await this.customerRepository.findByEmail(
+        normalizedEmail,
+      );
+      if (!retryCustomer) {
+        throw error;
+      }
+      await this.customerRepository.save(
+        this.customerRepository.merge(retryCustomer, {
+          ...payload.customer,
+          email: normalizedEmail,
+        }),
+      );
+    }
 
     // Fees are treated as optional and default to 0.
     const baseFee = Number(payload.baseFee ?? 0);

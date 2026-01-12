@@ -62,7 +62,11 @@ export class PayTransactionUseCase {
       acceptPersonalAuth: payload.acceptPersonalAuth,
     });
 
-    if (paymentResult.success) {
+    if (paymentResult.status === TransactionStatus.PENDING) {
+      transaction.status = TransactionStatus.PENDING;
+      transaction.wompiReference = paymentResult.wompiReference ?? null;
+      transaction.errorMessage = null;
+    } else if (paymentResult.success) {
       // Stock is reduced only after the payment is confirmed.
       const productId = transaction.product?.id;
       if (!productId) {

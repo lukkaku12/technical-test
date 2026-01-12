@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'crypto';
 
 import type {
   PaymentGatewayPort,
@@ -16,11 +17,12 @@ export class WompiGateway implements PaymentGatewayPort {
     const baseUrl = process.env.WOMPI_BASE_URL;
     const privateKey = process.env.WOMPI_PRIVATE_KEY;
     const currency = process.env.WOMPI_CURRENCY;
+    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
 
     // If these env vars are missing, we cannot authenticate or even target the correct environment.
     // Returning a controlled failure here keeps the Use Case pure (no try/catch around infra setup)
     // and avoids wasting time on external calls that are guaranteed to fail.
-    if (!baseUrl || !privateKey || !currency) {
+    if (!baseUrl || !privateKey || !currency || !integrityKey) {
       return {
         success: false,
         errorMessage: 'Wompi configuration is missing',
@@ -49,6 +51,7 @@ export class WompiGateway implements PaymentGatewayPort {
       baseUrl,
       privateKey,
       currency,
+      integrityKey,
       input,
       paymentSource.paymentSourceId,
     );
@@ -96,6 +99,13 @@ export class WompiGateway implements PaymentGatewayPort {
     const payload = (await response.json()) as WompiPaymentSourceResponse;
 
     if (!response.ok || !payload?.data?.id) {
+      // Log provider payload for debugging failed payment source creation.
+      // Avoid logging full card data (only token is used here).
+      console.error('[Wompi] payment_source failed', {
+        status: response.status,
+        error: payload?.error ?? null,
+        data: payload?.data ?? null,
+      });
       return {
         success: false,
         errorMessage:
@@ -116,13 +126,21 @@ export class WompiGateway implements PaymentGatewayPort {
     baseUrl: string,
     privateKey: string,
     currency: string,
+    integrityKey: string,
     input: PaymentRequest,
     paymentSourceId: string,
   ): Promise<{
     success: boolean;
+    status?: string;
     wompiReference?: string;
     errorMessage?: string;
   }> {
+    const amountInCents = Math.round(input.amount * 100);
+    const signatureInput = `${input.reference}${amountInCents}${currency}${integrityKey}`;
+    const signature = createHash('sha256')
+      .update(signatureInput)
+      .digest('hex');
+
     const response = await fetch(`${baseUrl}/transactions`, {
       method: 'POST',
       headers: {
@@ -131,11 +149,12 @@ export class WompiGateway implements PaymentGatewayPort {
       },
       body: JSON.stringify({
         // Wompi expects cents (integer). Ensure the Use Case passes cents, not COP pesos.
-        amount_in_cents: input.amount,
+        amount_in_cents: amountInCents,
         currency,
         customer_email: input.customerEmail,
         payment_source_id: paymentSourceId,
         reference: input.reference,
+        signature,
         payment_method: {
           installments: 1,
         },
@@ -145,6 +164,14 @@ export class WompiGateway implements PaymentGatewayPort {
     const payload = (await response.json()) as WompiTransactionResponse;
 
     if (!response.ok || !payload?.data?.id) {
+      // Log provider payload for debugging failed transaction creation.
+      console.error('[Wompi] transaction failed', {
+        status: response.status,
+        error: payload?.error ?? null,
+        data: payload?.data ?? null,
+        signatureInput,
+        signature,
+      });
       return {
         success: false,
         errorMessage: payload?.error?.message ?? 'Unable to create transaction',
@@ -155,12 +182,22 @@ export class WompiGateway implements PaymentGatewayPort {
     if (status === 'APPROVED') {
       return {
         success: true,
+        status,
+        wompiReference: payload.data.id,
+      };
+    }
+
+    if (status === 'PENDING') {
+      return {
+        success: true,
+        status,
         wompiReference: payload.data.id,
       };
     }
 
     return {
       success: false,
+      status,
       errorMessage: `Transaction ${status ?? 'failed'}`,
     };
   }

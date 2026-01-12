@@ -127,6 +127,37 @@ describe('PayTransactionUseCase', () => {
     expect(result.value.status).toBe(TransactionStatus.FAILED);
   });
 
+  it('keeps transaction PENDING without touching stock', async () => {
+    const productRepo = {
+      findById: async () => ({ id: 'p1', availableUnits: 3 }),
+      save: () => {
+        throw new Error('should not save');
+      },
+    } as any;
+
+    const paymentGateway = {
+      charge: async () => ({
+        success: true,
+        status: TransactionStatus.PENDING,
+        wompiReference: 'wtx_pending',
+      }),
+    } as any;
+
+    const useCase = new PayTransactionUseCase(
+      { findById: async () => freshTransaction(), save: (t: any) => t } as any,
+      productRepo,
+      paymentGateway,
+    );
+
+    const result = await useCase.execute('t1', okPaymentPayload as any);
+
+    if (!result.ok) {
+      throw new Error('Expected ok result');
+    }
+    expect(result.value.status).toBe(TransactionStatus.PENDING);
+    expect(result.value.wompiReference).toBe('wtx_pending');
+  });
+
   it('returns NOT_FOUND when product id is missing on success', async () => {
     const paymentGateway = {
       charge: async () => ({ success: true, wompiReference: 'wtx_2' }),

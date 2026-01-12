@@ -13,6 +13,7 @@ let mockState = {
     currentStep: 1,
     baseFee: 1500,
     deliveryFee: 3500,
+    transactionStatus: 'PENDING',
   },
   form: {
     isSheetOpen: false,
@@ -32,7 +33,15 @@ let mockState = {
   },
 }
 
-const { fetchProductsMock, setSelectedProductIdMock, setCurrentStepMock, setSheetOpenMock } = vi.hoisted(() => ({
+const {
+  fetchProductsMock,
+  setSelectedProductIdMock,
+  setCurrentStepMock,
+  setSheetOpenMock,
+  setTransactionStatusMock,
+  resetCheckoutMock,
+  resetFormMock,
+} = vi.hoisted(() => ({
   fetchProductsMock: vi.fn(() => ({ type: 'checkout/fetchProducts' })),
   setSelectedProductIdMock: vi.fn((id: string) => ({
     type: 'checkout/setSelectedProductId',
@@ -46,6 +55,12 @@ const { fetchProductsMock, setSelectedProductIdMock, setCurrentStepMock, setShee
     type: 'form/setSheetOpen',
     payload: isOpen,
   })),
+  setTransactionStatusMock: vi.fn((status: string) => ({
+    type: 'checkout/setTransactionStatus',
+    payload: status,
+  })),
+  resetCheckoutMock: vi.fn(() => ({ type: 'checkout/resetCheckout' })),
+  resetFormMock: vi.fn(() => ({ type: 'form/resetForm' })),
 }))
 
 vi.mock('../store/hooks', () => ({
@@ -58,10 +73,13 @@ vi.mock('../store/slices/checkoutSlice', () => ({
   fetchProducts: fetchProductsMock,
   setSelectedProductId: setSelectedProductIdMock,
   setCurrentStep: setCurrentStepMock,
+  setTransactionStatus: setTransactionStatusMock,
+  resetCheckout: resetCheckoutMock,
 }))
 
 vi.mock('../store/slices/formSlice', () => ({
   setSheetOpen: setSheetOpenMock,
+  resetForm: resetFormMock,
 }))
 
 describe('App', () => {
@@ -81,6 +99,7 @@ describe('App', () => {
         currentStep: 1,
         baseFee: 1500,
         deliveryFee: 3500,
+        transactionStatus: 'PENDING',
       },
       form: {
         isSheetOpen: false,
@@ -119,6 +138,7 @@ describe('App', () => {
         currentStep: 1,
         baseFee: 1500,
         deliveryFee: 3500,
+        transactionStatus: 'PENDING',
       },
       form: {
         isSheetOpen: false,
@@ -163,6 +183,7 @@ describe('App', () => {
         currentStep: 1,
         baseFee: 1500,
         deliveryFee: 3500,
+        transactionStatus: 'PENDING',
       },
       form: {
         isSheetOpen: false,
@@ -214,6 +235,7 @@ describe('App', () => {
         currentStep: 3,
         baseFee: 1500,
         deliveryFee: 3500,
+        transactionStatus: 'PENDING',
       },
       form: {
         isSheetOpen: false,
@@ -238,6 +260,7 @@ describe('App', () => {
     const button = screen.getByRole('button', { name: 'Confirm' })
     button.click()
 
+    expect(setTransactionStatusMock).toHaveBeenCalledWith('PENDING')
     expect(setCurrentStepMock).toHaveBeenCalledWith(4)
     expect(mockDispatch).toHaveBeenCalledWith({
       type: 'checkout/setCurrentStep',

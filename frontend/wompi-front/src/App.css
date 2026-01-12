@@ -341,6 +341,64 @@
   color: var(--muted);
 }
 
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  max-width: 520px;
+}
+
+.status-pill {
+  align-self: flex-start;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pill-success {
+  background: #dcf3e5;
+  color: #1a6f3b;
+}
+
+.status-pill-failed {
+  background: #ffe8e4;
+  color: #b02418;
+}
+
+.status-pill-pending {
+  background: #fff4d1;
+  color: #8a5a00;
+}
+
+.status-title {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--ink);
+}
+
+.status-message {
+  margin: 0;
+  color: var(--muted);
+}
+
+.status-return {
+  align-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.8rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
 @media (min-width: 768px) {
   .app {
     padding: 3.5rem 2rem 5rem;

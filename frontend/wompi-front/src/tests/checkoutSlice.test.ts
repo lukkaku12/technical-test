@@ -20,6 +20,7 @@ describe('checkoutSlice', () => {
     expect(state.products).toEqual([])
     expect(state.baseFee).toBeGreaterThan(0)
     expect(state.deliveryFee).toBeGreaterThan(0)
+    expect(state.transactionStatus).toBe('PENDING')
     expect(state.status).toBe('idle')
     expect(state.selectedProductId).toBeNull()
     expect(state.errorMessage).toBeNull()

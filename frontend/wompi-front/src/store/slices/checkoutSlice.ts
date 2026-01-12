@@ -7,6 +7,7 @@ export type CheckoutState = {
   products: Product[]
   baseFee: number
   deliveryFee: number
+  transactionStatus: 'PENDING' | 'SUCCESS' | 'FAILED'
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
   selectedProductId: string | null
   errorMessage: string | null
@@ -18,6 +19,7 @@ const initialState: CheckoutState = {
   products: [],
   baseFee: 1500,
   deliveryFee: 3500,
+  transactionStatus: 'PENDING',
   status: 'idle',
   selectedProductId: null,
   errorMessage: null,
@@ -43,9 +45,23 @@ const checkoutSlice = createSlice({
       // Move between steps in the flow.
       state.currentStep = action.payload
     },
+    setTransactionStatus(
+      state,
+      action: PayloadAction<'PENDING' | 'SUCCESS' | 'FAILED'>,
+    ) {
+      // Save the current status for the status screen.
+      state.transactionStatus = action.payload
+    },
     setSelectedProductId(state, action: PayloadAction<string>) {
       // Save the selected product id.
       state.selectedProductId = action.payload
+    },
+    resetCheckout(state) {
+      // Reset checkout state to the defaults.
+      state.currentStep = 1
+      state.selectedProductId = null
+      state.errorMessage = null
+      state.transactionStatus = 'PENDING'
     },
   },
   extraReducers: (builder) => {
@@ -66,5 +82,10 @@ const checkoutSlice = createSlice({
   },
 })
 
-export const { setCurrentStep, setSelectedProductId } = checkoutSlice.actions
+export const {
+  setCurrentStep,
+  setSelectedProductId,
+  setTransactionStatus,
+  resetCheckout,
+} = checkoutSlice.actions
 export default checkoutSlice.reducer

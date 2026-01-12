@@ -3,13 +3,16 @@ import './App.css'
 import CheckoutFormSheet from './components/CheckoutFormSheet'
 import ProductScreen from './components/ProductScreen'
 import SummaryScreen from './components/SummaryScreen'
+import StatusScreen from './components/StatusScreen'
 import { useAppDispatch, useAppSelector } from './store/hooks'
 import {
   fetchProducts,
   setCurrentStep,
+  resetCheckout,
   setSelectedProductId,
+  setTransactionStatus,
 } from './store/slices/checkoutSlice'
-import { setSheetOpen } from './store/slices/formSlice'
+import { resetForm, setSheetOpen } from './store/slices/formSlice'
 
 function App() {
   const dispatch = useAppDispatch()
@@ -21,17 +24,20 @@ function App() {
     currentStep,
     baseFee,
     deliveryFee,
+    transactionStatus,
   } = useAppSelector((state) => state.checkout)
   const isSheetOpen = useAppSelector((state) => state.form.isSheetOpen)
   const selectedProduct =
     products.find((product) => product.id === selectedProductId) ?? null
 
   const stepLabel =
-    currentStep >= 3
-      ? 'Step 3 of 3'
-      : currentStep === 2
-        ? 'Step 2 of 3'
-        : 'Step 1 of 3'
+    currentStep >= 4
+      ? 'Step 4 of 4'
+      : currentStep === 3
+        ? 'Step 3 of 4'
+        : currentStep === 2
+          ? 'Step 2 of 4'
+          : 'Step 1 of 4'
 
   useEffect(() => {
     dispatch(fetchProducts())
@@ -42,12 +48,18 @@ function App() {
       <header className="app-header">
         <p className="app-kicker">{stepLabel}</p>
         <h1 className="app-title">
-          {currentStep >= 3 ? 'Review your order' : 'Choose your product'}
+          {currentStep >= 4
+            ? 'Payment status'
+            : currentStep === 3
+              ? 'Review your order'
+              : 'Choose your product'}
         </h1>
         <p className="app-subtitle">
-          {currentStep >= 3
-            ? 'Check the totals before confirming.'
-            : 'Select a product to continue the checkout.'}
+          {currentStep >= 4
+            ? 'Return to the product list when you are ready.'
+            : currentStep === 3
+              ? 'Check the totals before confirming.'
+              : 'Select a product to continue the checkout.'}
         </p>
       </header>
 
@@ -73,6 +85,7 @@ function App() {
                 className="app-cta"
                 type="button"
                 onClick={() => {
+                  // Step 2 starts when the sheet opens.
                   dispatch(setSheetOpen(true))
                   dispatch(setCurrentStep(2))
                 }}
@@ -87,12 +100,27 @@ function App() {
           </>
         )}
 
-        {status === 'succeeded' && currentStep >= 3 && (
+        {status === 'succeeded' && currentStep === 3 && (
           <SummaryScreen
             product={selectedProduct}
             baseFee={baseFee}
             deliveryFee={deliveryFee}
-            onConfirm={() => dispatch(setCurrentStep(currentStep + 1))}
+            onConfirm={() => {
+              // Step 4 shows the status screen (no payment call yet).
+              dispatch(setTransactionStatus('PENDING'))
+              dispatch(setCurrentStep(4))
+            }}
+          />
+        )}
+
+        {status === 'succeeded' && currentStep >= 4 && (
+          <StatusScreen
+            status={transactionStatus}
+            onReturn={() => {
+              // Reset the flow to start again.
+              dispatch(resetCheckout())
+              dispatch(resetForm())
+            }}
           />
         )}
       </section>

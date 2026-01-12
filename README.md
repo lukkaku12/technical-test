@@ -179,3 +179,25 @@ Response:
 4. Payment is simulated using the fake Payment gateway.
 
 This keeps application logic isolated from infrastructure details.
+
+## Railway‑Oriented Programming (ROP)
+
+The checkout use cases follow a Railway‑Oriented Programming style to keep
+errors explicit and easy to reason about.
+
+What was added:
+- A `Result` type with `ok`/`err` helpers in
+  `backend/wompi-backend/src/modules/checkout/domain/types/result.types.ts`
+- Checkout error definitions (`CheckoutError`, `CheckoutErrorCode`) in
+  `backend/wompi-backend/src/modules/checkout/domain/types/checkout.types.ts`
+- Use cases now return `Result` instead of throwing:
+  - `backend/wompi-backend/src/modules/checkout/application/use-cases/create-transaction.usecase.ts`
+  - `backend/wompi-backend/src/modules/checkout/application/use-cases/get-transaction.usecase.ts`
+  - `backend/wompi-backend/src/modules/checkout/application/use-cases/pay-transaction.usecase.ts`
+- The controller translates `Result` errors into HTTP responses in
+  `backend/wompi-backend/src/modules/transaction/interfaces/transaction.controller.ts`
+
+Why this helps:
+- Business flow is explicit: each step returns either success or a known error.
+- No exceptions inside use cases, making the application layer pure and predictable.
+- Controllers own the HTTP mapping, keeping domain logic framework‑agnostic.

@@ -1,7 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { TRANSACTION_REPOSITORY } from '@/modules/transaction/application/ports/transaction-repository.port';
 import type { TransactionRepositoryPort } from '@/modules/transaction/application/ports/transaction-repository.port';
+import type { CheckoutError } from '@/modules/checkout/domain/types/checkout.types';
+import { Err, Ok } from '@/modules/checkout/domain/types/result.types';
 
 @Injectable()
 export class GetTransactionUseCase {
@@ -13,15 +15,18 @@ export class GetTransactionUseCase {
   async execute(id: string) {
     const transaction = await this.transactionRepository.findById(id);
     if (!transaction) {
-      throw new NotFoundException('Transaction not found');
+      return Err<CheckoutError>({
+        code: 'NOT_FOUND',
+        message: 'Transaction not found',
+      });
     }
 
-    return {
+    return Ok({
       transactionId: transaction.id,
       status: transaction.status,
       totalAmount: transaction.totalAmount,
       wompiReference: transaction.wompiReference ?? null,
       errorMessage: transaction.errorMessage ?? null,
-    };
+    });
   }
 }

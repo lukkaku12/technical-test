@@ -1,17 +1,18 @@
-import { NotFoundException } from '@nestjs/common';
-
 import { GetTransactionUseCase } from './get-transaction.usecase';
 import { TransactionStatus } from '@/modules/transaction/domain/enums/transaction-status.enum';
 
 describe('GetTransactionUseCase', () => {
-  it('throws when transaction does not exist', async () => {
+  it('returns NOT_FOUND when transaction does not exist', async () => {
     const useCase = new GetTransactionUseCase({
       findById: async () => null,
     } as any);
 
-    await expect(useCase.execute('t1')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    const result = await useCase.execute('t1');
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Transaction not found' },
+    });
   });
 
   it('returns transaction info', async () => {
@@ -28,11 +29,14 @@ describe('GetTransactionUseCase', () => {
     const result = await useCase.execute('t1');
 
     expect(result).toEqual({
-      transactionId: 't1',
-      status: TransactionStatus.PENDING,
-      totalAmount: 1500,
-      wompiReference: null,
-      errorMessage: null,
+      ok: true,
+      value: {
+        transactionId: 't1',
+        status: TransactionStatus.PENDING,
+        totalAmount: 1500,
+        wompiReference: null,
+        errorMessage: null,
+      },
     });
   });
 });

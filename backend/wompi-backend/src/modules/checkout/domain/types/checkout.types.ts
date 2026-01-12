@@ -17,3 +17,13 @@ export type PayTransactionInput = {
   acceptanceToken: string;
   acceptPersonalAuth: string;
 };
+
+export type CheckoutErrorCode =
+  | 'BAD_REQUEST'
+  | 'NOT_FOUND'
+  | 'CONFLICT';
+
+export type CheckoutError = {
+  code: CheckoutErrorCode;
+  message: string;
+};

@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PRODUCT_REPOSITORY } from '@/modules/product/application/ports/product.repository.port';
 import type { ProductRepositoryPort } from '@/modules/product/application/ports/product.repository.port';
 import { TRANSACTION_REPOSITORY } from '@/modules/transaction/application/ports/transaction-repository.port';
@@ -11,7 +6,11 @@ import type { TransactionRepositoryPort } from '@/modules/transaction/applicatio
 import { TransactionStatus } from '@/modules/transaction/domain/enums/transaction-status.enum';
 import { PAYMENT_GATEWAY } from '@/modules/checkout/application/ports/payment-gateway.port';
 import type { PaymentGatewayPort } from '@/modules/checkout/application/ports/payment-gateway.port';
-import type { PayTransactionInput } from '@/modules/checkout/domain/types/checkout.types';
+import type {
+  CheckoutError,
+  PayTransactionInput,
+} from '@/modules/checkout/domain/types/checkout.types';
+import { Err, Ok } from '@/modules/checkout/domain/types/result.types';
 
 @Injectable()
 export class PayTransactionUseCase {
@@ -27,12 +26,18 @@ export class PayTransactionUseCase {
   async execute(id: string, payload: PayTransactionInput) {
     const transaction = await this.transactionRepository.findById(id);
     if (!transaction) {
-      throw new NotFoundException('Transaction not found');
+      return Err<CheckoutError>({
+        code: 'NOT_FOUND',
+        message: 'Transaction not found',
+      });
     }
 
     // Only PENDING transactions can be paid.
     if (transaction.status !== TransactionStatus.PENDING) {
-      throw new ConflictException('Transaction is not pending');
+      return Err<CheckoutError>({
+        code: 'CONFLICT',
+        message: 'Transaction is not pending',
+      });
     }
 
     // Payment credentials come from the frontend tokenization flow.
@@ -41,7 +46,10 @@ export class PayTransactionUseCase {
       !payload?.acceptanceToken ||
       !payload?.acceptPersonalAuth
     ) {
-      throw new ConflictException('Missing payment credentials');
+      return Err<CheckoutError>({
+        code: 'BAD_REQUEST',
+        message: 'Missing payment credentials',
+      });
     }
 
     // Delegate external payment processing to the gateway adapter.
@@ -58,16 +66,25 @@ export class PayTransactionUseCase {
       // Stock is reduced only after the payment is confirmed.
       const productId = transaction.product?.id;
       if (!productId) {
-        throw new NotFoundException('Product not found');
+        return Err<CheckoutError>({
+          code: 'NOT_FOUND',
+          message: 'Product not found',
+        });
       }
 
       const product = await this.productRepository.findById(productId);
       if (!product) {
-        throw new NotFoundException('Product not found');
+        return Err<CheckoutError>({
+          code: 'NOT_FOUND',
+          message: 'Product not found',
+        });
       }
 
       if (product.availableUnits <= 0) {
-        throw new ConflictException('Product out of stock');
+        return Err<CheckoutError>({
+          code: 'CONFLICT',
+          message: 'Product out of stock',
+        });
       }
 
       product.availableUnits -= 1;
@@ -85,11 +102,11 @@ export class PayTransactionUseCase {
 
     await this.transactionRepository.save(transaction);
 
-    return {
+    return Ok({
       transactionId: transaction.id,
       status: transaction.status,
       wompiReference: transaction.wompiReference ?? null,
       errorMessage: transaction.errorMessage ?? null,
-    };
+    });
   }
 }

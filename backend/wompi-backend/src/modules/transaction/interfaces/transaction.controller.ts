@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Post,
 } from '@nestjs/common';
@@ -10,9 +13,30 @@ import { CreateTransactionUseCase } from '../../checkout/application/use-cases/c
 import { GetTransactionUseCase } from '../../checkout/application/use-cases/get-transaction.usecase';
 import { PayTransactionUseCase } from '../../checkout/application/use-cases/pay-transaction.usecase';
 import type {
+  CheckoutError,
   CreateTransactionInput,
   PayTransactionInput,
 } from '../../checkout/domain/types/checkout.types';
+import type { Result } from '../../checkout/domain/types/result.types';
+// Type guard used to narrow the Result type returned by use cases.
+// It allows the controller to clearly separate the success path (HTTP 2xx)
+// from the error path (mapped to HTTP exceptions), without throwing inside the use case.
+const isOk = <Ok, Err>(result: Result<Ok, Err>): result is { ok: true; value: Ok } => result.ok;
+// Translates domain-level errors into HTTP-specific exceptions.
+// Use cases return structured domain errors instead of throwing HTTP errors directly,
+// keeping the application layer framework-agnostic and testable.
+const throwHttpError = (error: CheckoutError): never => {
+  switch (error.code) {
+    case 'BAD_REQUEST':
+      throw new BadRequestException(error.message);
+    case 'NOT_FOUND':
+      throw new NotFoundException(error.message);
+    case 'CONFLICT':
+      throw new ConflictException(error.message);
+    default:
+      throw new ConflictException(error.message);
+  }
+};
 
 @Controller('transactions')
 export class TransactionsController {
@@ -24,12 +48,20 @@ export class TransactionsController {
 
   @Post()
   async createTransaction(@Body() body: CreateTransactionInput) {
-    return this.createTransactionUseCase.execute(body);
+    const result = await this.createTransactionUseCase.execute(body);
+    if (!isOk(result)) {
+      return throwHttpError(result.error);
+    }
+    return result.value;
   }
 
   @Get(':id')
   async getTransaction(@Param('id') id: string) {
-    return this.getTransactionUseCase.execute(id);
+    const result = await this.getTransactionUseCase.execute(id);
+    if (!isOk(result)) {
+      return throwHttpError(result.error);
+    }
+    return result.value;
   }
 
   @Post(':id/pay')
@@ -37,6 +69,10 @@ export class TransactionsController {
     @Param('id') id: string,
     @Body() body: PayTransactionInput,
   ) {
-    return this.payTransactionUseCase.execute(id, body);
+    const result = await this.payTransactionUseCase.execute(id, body);
+    if (!isOk(result)) {
+      return throwHttpError(result.error);
+    }
+    return result.value;
   }
 }

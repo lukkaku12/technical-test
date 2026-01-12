@@ -1,5 +1,3 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
-
 import { PayTransactionUseCase } from './pay-transaction.usecase';
 import { TransactionStatus } from '@/modules/transaction/domain/enums/transaction-status.enum';
 
@@ -11,6 +9,11 @@ describe('PayTransactionUseCase', () => {
     customer: { email: 'jane@example.com' },
     product: { id: 'p1' },
   };
+  const freshTransaction = () => ({
+    ...baseTransaction,
+    customer: { ...baseTransaction.customer },
+    product: { ...baseTransaction.product },
+  });
 
   const okPaymentPayload = {
     cardToken: 'tok',
@@ -18,19 +21,21 @@ describe('PayTransactionUseCase', () => {
     acceptPersonalAuth: 'true',
   };
 
-  it('throws when transaction is missing', async () => {
+  it('returns NOT_FOUND when transaction is missing', async () => {
     const useCase = new PayTransactionUseCase(
       { findById: async () => null } as any,
       {} as any,
       {} as any,
     );
 
-    await expect(useCase.execute('t1', {} as any)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    const result = await useCase.execute('t1', {} as any);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Transaction not found' },
+    });
   });
 
-  it('throws when transaction is not pending', async () => {
+  it('returns CONFLICT when transaction is not pending', async () => {
     const useCase = new PayTransactionUseCase(
       {
         findById: async () => ({
@@ -42,21 +47,29 @@ describe('PayTransactionUseCase', () => {
       {} as any,
     );
 
-    await expect(useCase.execute('t1', {} as any)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    const result = await useCase.execute('t1', {} as any);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'CONFLICT', message: 'Transaction is not pending' },
+    });
   });
 
-  it('throws when payment credentials are missing', async () => {
+  it('returns BAD_REQUEST when payment credentials are missing', async () => {
     const useCase = new PayTransactionUseCase(
       { findById: async () => baseTransaction } as any,
       {} as any,
       {} as any,
     );
 
-    await expect(
-      useCase.execute('t1', { cardToken: '', acceptanceToken: '' } as any),
-    ).rejects.toBeInstanceOf(ConflictException);
+    const result = await useCase.execute('t1', {
+      cardToken: '',
+      acceptanceToken: '',
+      acceptPersonalAuth: '',
+    } as any);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'BAD_REQUEST', message: 'Missing payment credentials' },
+    });
   });
 
   it('marks transaction SUCCESS and decreases stock', async () => {
@@ -82,7 +95,10 @@ describe('PayTransactionUseCase', () => {
 
     const result = await useCase.execute('t1', okPaymentPayload as any);
 
-    expect(result.status).toBe(TransactionStatus.SUCCESS);
+    if (!result.ok) {
+      throw new Error('Expected ok result');
+    }
+    expect(result.value.status).toBe(TransactionStatus.SUCCESS);
   });
 
   it('marks transaction FAILED and does not touch stock', async () => {
@@ -98,42 +114,47 @@ describe('PayTransactionUseCase', () => {
     } as any;
 
     const useCase = new PayTransactionUseCase(
-      { findById: async () => baseTransaction, save: (t: any) => t } as any,
+      { findById: async () => freshTransaction(), save: (t: any) => t } as any,
       productRepo,
       paymentGateway,
     );
 
     const result = await useCase.execute('t1', okPaymentPayload as any);
 
-    expect(result.status).toBe(TransactionStatus.FAILED);
+    if (!result.ok) {
+      throw new Error('Expected ok result');
+    }
+    expect(result.value.status).toBe(TransactionStatus.FAILED);
   });
 
-  it('throws when product id is missing on success', async () => {
+  it('returns NOT_FOUND when product id is missing on success', async () => {
     const paymentGateway = {
       charge: async () => ({ success: true, wompiReference: 'wtx_2' }),
     } as any;
 
     const useCase = new PayTransactionUseCase(
       {
-        findById: async () => ({ ...baseTransaction, product: null }),
+        findById: async () => ({ ...freshTransaction(), product: null }),
         save: (t: any) => t,
       } as any,
       {} as any,
       paymentGateway,
     );
 
-    await expect(
-      useCase.execute('t1', okPaymentPayload as any),
-    ).rejects.toBeInstanceOf(ConflictException);
+    const result = await useCase.execute('t1', okPaymentPayload as any);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Product not found' },
+    });
   });
 
-  it('throws when product is out of stock on success', async () => {
+  it('returns CONFLICT when product is out of stock on success', async () => {
     const paymentGateway = {
       charge: async () => ({ success: true, wompiReference: 'wtx_3' }),
     } as any;
 
     const useCase = new PayTransactionUseCase(
-      { findById: async () => baseTransaction, save: (t: any) => t } as any,
+      { findById: async () => freshTransaction(), save: (t: any) => t } as any,
       {
         findById: async () => ({ id: 'p1', availableUnits: 0 }),
         save: () => {},
@@ -141,8 +162,10 @@ describe('PayTransactionUseCase', () => {
       paymentGateway,
     );
 
-    await expect(
-      useCase.execute('t1', okPaymentPayload as any),
-    ).rejects.toBeInstanceOf(ConflictException);
+    const result = await useCase.execute('t1', okPaymentPayload as any);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'CONFLICT', message: 'Product out of stock' },
+    });
   });
 });

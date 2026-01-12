@@ -1,9 +1,3 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-
 import { CreateTransactionUseCase } from './create-transaction.usecase';
 import { TransactionStatus } from '@/modules/transaction/domain/enums/transaction-status.enum';
 
@@ -16,88 +10,91 @@ describe('CreateTransactionUseCase', () => {
     city: 'Bogota',
   };
 
-  it('throws when productId is missing', async () => {
-    const useCase = new CreateTransactionUseCase(
-      {
-        findById: async () => ({ id: 'p1', price: 1000, availableUnits: 5 }),
-      } as any,
-      { findByEmail: async () => null } as any,
-      { create: (d: any) => ({ id: 't1', ...d }), save: (d: any) => d } as any,
-    );
+  const buildUseCase = (overrides?: {
+    productRepository?: unknown;
+    customerRepository?: unknown;
+    transactionRepository?: unknown;
+  }) => {
+    const productRepository = overrides?.productRepository ?? {
+      findById: async () => ({ id: 'p1', price: 1000, availableUnits: 5 }),
+    };
+    const customerRepository = overrides?.customerRepository ?? {
+      findByEmail: async () => null,
+      create: (d: any) => ({ id: 'c1', ...d }),
+      merge: (_e: any, d: any) => d,
+      save: (d: any) => d,
+    };
+    const transactionRepository = overrides?.transactionRepository ?? {
+      create: (d: any) => ({ id: 't1', ...d }),
+      save: (d: any) => d,
+    };
 
-    await expect(
-      useCase.execute({ customer: baseCustomer } as any),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    return new CreateTransactionUseCase(
+      productRepository as any,
+      customerRepository as any,
+      transactionRepository as any,
+    );
+  };
+
+  it('returns BAD_REQUEST when productId is missing', async () => {
+    const useCase = buildUseCase();
+    const result = await useCase.execute({ customer: baseCustomer } as any);
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'BAD_REQUEST', message: 'productId is required' },
+    });
   });
 
-  it('throws when customer email is missing', async () => {
-    const useCase = new CreateTransactionUseCase(
-      {
-        findById: async () => ({ id: 'p1', price: 1000, availableUnits: 5 }),
-      } as any,
-      { findByEmail: async () => null } as any,
-      { create: (d: any) => ({ id: 't1', ...d }), save: (d: any) => d } as any,
-    );
+  it('returns BAD_REQUEST when customer email is missing', async () => {
+    const useCase = buildUseCase();
+    const result = await useCase.execute({
+      productId: 'p1',
+      customer: { ...baseCustomer, email: '' },
+    } as any);
 
-    await expect(
-      useCase.execute({
-        productId: 'p1',
-        customer: { ...baseCustomer, email: '' },
-      } as any),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'BAD_REQUEST', message: 'customer.email is required' },
+    });
   });
 
-  it('throws when product is not found', async () => {
-    const useCase = new CreateTransactionUseCase(
-      { findById: async () => null } as any,
-      { findByEmail: async () => null } as any,
-      { create: (d: any) => ({ id: 't1', ...d }), save: (d: any) => d } as any,
-    );
+  it('returns NOT_FOUND when product is missing', async () => {
+    const useCase = buildUseCase({
+      productRepository: { findById: async () => null },
+    });
 
-    await expect(
-      useCase.execute({
-        productId: 'p1',
-        customer: baseCustomer,
-      } as any),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    const result = await useCase.execute({
+      productId: 'p1',
+      customer: baseCustomer,
+    } as any);
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Product not found' },
+    });
   });
 
-  it('throws when product is out of stock', async () => {
-    const useCase = new CreateTransactionUseCase(
-      {
+  it('returns CONFLICT when product is out of stock', async () => {
+    const useCase = buildUseCase({
+      productRepository: {
         findById: async () => ({ id: 'p1', price: 1000, availableUnits: 0 }),
-      } as any,
-      { findByEmail: async () => null } as any,
-      { create: (d: any) => ({ id: 't1', ...d }), save: (d: any) => d } as any,
-    );
+      },
+    });
 
-    await expect(
-      useCase.execute({
-        productId: 'p1',
-        customer: baseCustomer,
-      } as any),
-    ).rejects.toBeInstanceOf(ConflictException);
+    const result = await useCase.execute({
+      productId: 'p1',
+      customer: baseCustomer,
+    } as any);
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'CONFLICT', message: 'Product out of stock' },
+    });
   });
 
   it('creates customer and transaction', async () => {
-    const customerRepo = {
-      findByEmail: async () => null,
-      create: (d: any) => ({ id: 'c1', ...d }),
-      save: (d: any) => d,
-    } as any;
-
-    const transactionRepo = {
-      create: (d: any) => ({ id: 't1', ...d }),
-      save: (d: any) => d,
-    } as any;
-
-    const useCase = new CreateTransactionUseCase(
-      {
-        findById: async () => ({ id: 'p1', price: 1000, availableUnits: 5 }),
-      } as any,
-      customerRepo,
-      transactionRepo,
-    );
+    const useCase = buildUseCase();
 
     const result = await useCase.execute({
       productId: 'p1',
@@ -107,9 +104,12 @@ describe('CreateTransactionUseCase', () => {
     } as any);
 
     expect(result).toEqual({
-      transactionId: 't1',
-      status: TransactionStatus.PENDING,
-      totalAmount: 1300,
+      ok: true,
+      value: {
+        transactionId: 't1',
+        status: TransactionStatus.PENDING,
+        totalAmount: 1300,
+      },
     });
   });
 
@@ -130,19 +130,22 @@ describe('CreateTransactionUseCase', () => {
       save: (d: any) => d,
     } as any;
 
-    const useCase = new CreateTransactionUseCase(
-      {
+    const useCase = buildUseCase({
+      productRepository: {
         findById: async () => ({ id: 'p1', price: 1500, availableUnits: 5 }),
-      } as any,
-      customerRepo,
-      transactionRepo,
-    );
+      },
+      customerRepository: customerRepo,
+      transactionRepository: transactionRepo,
+    });
 
     const result = await useCase.execute({
       productId: 'p1',
       customer: baseCustomer,
     } as any);
 
-    expect(result.transactionId).toBe('t2');
+    if (!result.ok) {
+      throw new Error('Expected ok result');
+    }
+    expect(result.value.transactionId).toBe('t2');
   });
 });

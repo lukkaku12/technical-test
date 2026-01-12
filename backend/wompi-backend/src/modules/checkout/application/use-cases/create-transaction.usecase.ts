@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { PRODUCT_REPOSITORY } from '@/modules/product/application/ports/product.repository.port';
 import type { ProductRepositoryPort } from '@/modules/product/application/ports/product.repository.port';
@@ -13,7 +7,11 @@ import type { CustomerRepositoryPort } from '@/modules/customer/application/port
 import { TRANSACTION_REPOSITORY } from '@/modules/transaction/application/ports/transaction-repository.port';
 import type { TransactionRepositoryPort } from '@/modules/transaction/application/ports/transaction-repository.port';
 import { TransactionStatus } from '@/modules/transaction/domain/enums/transaction-status.enum';
-import type { CreateTransactionInput } from '@/modules/checkout/domain/types/checkout.types';
+import type {
+  CreateTransactionInput,
+  CheckoutError,
+} from '@/modules/checkout/domain/types/checkout.types';
+import { Err, Ok } from '@/modules/checkout/domain/types/result.types';
 
 @Injectable()
 export class CreateTransactionUseCase {
@@ -29,19 +27,31 @@ export class CreateTransactionUseCase {
   async execute(payload: CreateTransactionInput) {
     // To create a transaction its needed to have a product and a customer mail
     if (!payload?.productId) {
-      throw new BadRequestException('productId is required');
+      return Err<CheckoutError>({
+        code: 'BAD_REQUEST',
+        message: 'productId is required',
+      });
     }
     if (!payload.customer?.email) {
-      throw new BadRequestException('customer.email is required');
+      return Err<CheckoutError>({
+        code: 'BAD_REQUEST',
+        message: 'customer.email is required',
+      });
     }
 
     // Product availability is checked before any customer or transaction writes.
     const product = await this.productRepository.findById(payload.productId);
     if (!product) {
-      throw new NotFoundException('Product not found');
+      return Err<CheckoutError>({
+        code: 'NOT_FOUND',
+        message: 'Product not found',
+      });
     }
     if (product.availableUnits <= 0) {
-      throw new ConflictException('Product out of stock');
+      return Err<CheckoutError>({
+        code: 'CONFLICT',
+        message: 'Product out of stock',
+      });
     }
 
     // Customer is upserted by email to keep checkout guest-based.
@@ -58,7 +68,10 @@ export class CreateTransactionUseCase {
     const deliveryFee = Number(payload.deliveryFee ?? 0);
 
     if (Number.isNaN(baseFee) || Number.isNaN(deliveryFee)) {
-      throw new BadRequestException('baseFee and deliveryFee must be numbers');
+      return Err<CheckoutError>({
+        code: 'BAD_REQUEST',
+        message: 'baseFee and deliveryFee must be numbers',
+      });
     }
 
     const amount = product.price;
@@ -77,10 +90,10 @@ export class CreateTransactionUseCase {
 
     await this.transactionRepository.save(transaction);
 
-    return {
+    return Ok({
       transactionId: transaction.id,
       status: transaction.status,
       totalAmount: transaction.totalAmount,
-    };
+    });
   }
 }

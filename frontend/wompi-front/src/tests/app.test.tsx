@@ -10,6 +10,9 @@ let mockState = {
     status: 'idle',
     errorMessage: null as string | null,
     selectedProductId: null as string | null,
+    currentStep: 1,
+    baseFee: 1500,
+    deliveryFee: 3500,
   },
   form: {
     isSheetOpen: false,
@@ -29,11 +32,19 @@ let mockState = {
   },
 }
 
-const { fetchProductsMock, setSelectedProductIdMock } = vi.hoisted(() => ({
+const { fetchProductsMock, setSelectedProductIdMock, setCurrentStepMock, setSheetOpenMock } = vi.hoisted(() => ({
   fetchProductsMock: vi.fn(() => ({ type: 'checkout/fetchProducts' })),
   setSelectedProductIdMock: vi.fn((id: string) => ({
     type: 'checkout/setSelectedProductId',
     payload: id,
+  })),
+  setCurrentStepMock: vi.fn((step: number) => ({
+    type: 'checkout/setCurrentStep',
+    payload: step,
+  })),
+  setSheetOpenMock: vi.fn((isOpen: boolean) => ({
+    type: 'form/setSheetOpen',
+    payload: isOpen,
   })),
 }))
 
@@ -46,6 +57,11 @@ vi.mock('../store/hooks', () => ({
 vi.mock('../store/slices/checkoutSlice', () => ({
   fetchProducts: fetchProductsMock,
   setSelectedProductId: setSelectedProductIdMock,
+  setCurrentStep: setCurrentStepMock,
+}))
+
+vi.mock('../store/slices/formSlice', () => ({
+  setSheetOpen: setSheetOpenMock,
 }))
 
 describe('App', () => {
@@ -62,6 +78,9 @@ describe('App', () => {
         status: 'loading',
         errorMessage: null,
         selectedProductId: null,
+        currentStep: 1,
+        baseFee: 1500,
+        deliveryFee: 3500,
       },
       form: {
         isSheetOpen: false,
@@ -97,6 +116,9 @@ describe('App', () => {
         status: 'failed',
         errorMessage: null,
         selectedProductId: null,
+        currentStep: 1,
+        baseFee: 1500,
+        deliveryFee: 3500,
       },
       form: {
         isSheetOpen: false,
@@ -138,6 +160,9 @@ describe('App', () => {
         status: 'succeeded',
         errorMessage: null,
         selectedProductId: null,
+        currentStep: 1,
+        baseFee: 1500,
+        deliveryFee: 3500,
       },
       form: {
         isSheetOpen: false,
@@ -168,6 +193,55 @@ describe('App', () => {
     expect(mockDispatch).toHaveBeenCalledWith({
       type: 'checkout/setSelectedProductId',
       payload: 'prod-1',
+    })
+  })
+
+  it('moves to the next step when confirming the summary', () => {
+    mockState = {
+      checkout: {
+        products: [
+          {
+            id: 'prod-1',
+            name: 'Pour Over Kit',
+            description: 'A simple kit for home brewing.',
+            price: 56000,
+            availableUnits: 4,
+          },
+        ],
+        status: 'succeeded',
+        errorMessage: null,
+        selectedProductId: 'prod-1',
+        currentStep: 3,
+        baseFee: 1500,
+        deliveryFee: 3500,
+      },
+      form: {
+        isSheetOpen: false,
+        values: {
+          cardName: '',
+          cardNumber: '',
+          expiry: '',
+          cvv: '',
+          fullName: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          notes: '',
+        },
+        errors: {},
+      },
+    }
+
+    render(<App />)
+
+    const button = screen.getByRole('button', { name: 'Confirm' })
+    button.click()
+
+    expect(setCurrentStepMock).toHaveBeenCalledWith(4)
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'checkout/setCurrentStep',
+      payload: 4,
     })
   })
 })

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import CheckoutFormSheet from '../components/CheckoutFormSheet'
 import formReducer from '../store/slices/formSlice'
 
-const renderSheet = (onClose = () => {}) => {
+const renderSheet = (onClose = () => {}, onContinue = () => {}) => {
   const store = configureStore({
     reducer: {
       form: formReducer,
@@ -15,7 +15,7 @@ const renderSheet = (onClose = () => {}) => {
 
   render(
     <Provider store={store}>
-      <CheckoutFormSheet isOpen onClose={onClose} />
+      <CheckoutFormSheet isOpen onClose={onClose} onContinue={onContinue} />
     </Provider>,
   )
 
@@ -48,5 +48,42 @@ describe('CheckoutFormSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('calls onContinue when the form is valid', () => {
+    const onContinue = vi.fn()
+    renderSheet(undefined, onContinue)
+
+    fireEvent.change(screen.getByLabelText('Name on card'), {
+      target: { value: 'Jane Doe' },
+    })
+    fireEvent.change(screen.getByLabelText('Card number'), {
+      target: { value: '4111 1111 1111 1111' },
+    })
+    fireEvent.change(screen.getByLabelText('Expiry'), {
+      target: { value: '12/29' },
+    })
+    fireEvent.change(screen.getByLabelText('CVV'), {
+      target: { value: '123' },
+    })
+    fireEvent.change(screen.getByLabelText('Full name'), {
+      target: { value: 'Jane Doe' },
+    })
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'jane@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('Phone'), {
+      target: { value: '3001234567' },
+    })
+    fireEvent.change(screen.getByLabelText('Address'), {
+      target: { value: 'Street 123' },
+    })
+    fireEvent.change(screen.getByLabelText('City'), {
+      target: { value: 'Bogota' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(onContinue).toHaveBeenCalled()
   })
 })

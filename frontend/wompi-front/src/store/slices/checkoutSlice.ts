@@ -5,6 +5,8 @@ import { getProducts, type Product } from '../../services/api/products'
 export type CheckoutState = {
   currentStep: number
   products: Product[]
+  baseFee: number
+  deliveryFee: number
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
   selectedProductId: string | null
   errorMessage: string | null
@@ -14,6 +16,8 @@ export type CheckoutState = {
 const initialState: CheckoutState = {
   currentStep: 1,
   products: [],
+  baseFee: 1500,
+  deliveryFee: 3500,
   status: 'idle',
   selectedProductId: null,
   errorMessage: null,
@@ -35,6 +39,10 @@ const checkoutSlice = createSlice({
   name: 'checkout',
   initialState,
   reducers: {
+    setCurrentStep(state, action: PayloadAction<number>) {
+      // Move between steps in the flow.
+      state.currentStep = action.payload
+    },
     setSelectedProductId(state, action: PayloadAction<string>) {
       // Save the selected product id.
       state.selectedProductId = action.payload
@@ -58,5 +66,5 @@ const checkoutSlice = createSlice({
   },
 })
 
-export const { setSelectedProductId } = checkoutSlice.actions
+export const { setCurrentStep, setSelectedProductId } = checkoutSlice.actions
 export default checkoutSlice.reducer

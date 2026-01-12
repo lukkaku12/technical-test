@@ -10,9 +10,14 @@ import { detectCardBrand, validateForm } from '../utils/validators'
 type CheckoutFormSheetProps = {
   isOpen: boolean
   onClose: () => void
+  onContinue: () => void
 }
 
-const CheckoutFormSheet = ({ isOpen, onClose }: CheckoutFormSheetProps) => {
+const CheckoutFormSheet = ({
+  isOpen,
+  onClose,
+  onContinue,
+}: CheckoutFormSheetProps) => {
   const dispatch = useAppDispatch()
   const { values, errors } = useAppSelector((state) => state.form)
   const brand = detectCardBrand(values.cardNumber)
@@ -40,6 +45,11 @@ const CheckoutFormSheet = ({ isOpen, onClose }: CheckoutFormSheetProps) => {
     // Run all validations and surface the errors in the UI.
     const validationErrors = validateForm(values)
     dispatch(setErrors(validationErrors))
+
+    const hasErrors = Object.keys(validationErrors).length > 0
+    if (!hasErrors) {
+      onContinue()
+    }
   }
 
   const brandLabel =

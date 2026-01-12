@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it, vi } from 'vitest'
 import checkoutReducer, {
   fetchProducts,
+  setCurrentStep,
   setSelectedProductId,
 } from '../store/slices/checkoutSlice'
 import { getProducts, type Product } from '../services/api/products'
@@ -17,6 +18,8 @@ describe('checkoutSlice', () => {
     const state = checkoutReducer(undefined, { type: 'unknown' })
     expect(state.currentStep).toBe(1)
     expect(state.products).toEqual([])
+    expect(state.baseFee).toBeGreaterThan(0)
+    expect(state.deliveryFee).toBeGreaterThan(0)
     expect(state.status).toBe('idle')
     expect(state.selectedProductId).toBeNull()
     expect(state.errorMessage).toBeNull()
@@ -25,6 +28,11 @@ describe('checkoutSlice', () => {
   it('sets the selected product id', () => {
     const state = checkoutReducer(undefined, setSelectedProductId('prod-1'))
     expect(state.selectedProductId).toBe('prod-1')
+  })
+
+  it('moves to another step', () => {
+    const state = checkoutReducer(undefined, setCurrentStep(3))
+    expect(state.currentStep).toBe(3)
   })
 
   it('fetchProducts thunk populates products', async () => {

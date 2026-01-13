@@ -52,7 +52,7 @@ are bound inside their modules:
   - Adapter: `TypeOrmTransactionRepository`
 - Payment
   - Port: `PAYMENT_GATEWAY`
-  - Adapter: `FakePaymentGateway`
+  - Adapter: `WompiPaymentGateway`
 
 The `CheckoutModule` imports Product/Customer/Transaction modules so their ports are
 available to checkout use cases.
@@ -70,6 +70,18 @@ DB_PASSWORD=
 DB_NAME=postgres
 DB_SSL=true
 DB_SYNCHRONIZE=false
+
+WOMPI_BASE_URL=
+
+WOMPI_PUBLIC_KEY=
+
+WOMPI_PRIVATE_KEY=
+
+WOMPI_EVENTS_SECRET=
+
+WOMPI_INTEGRITY_KEY=
+
+WOMPI_CURRENCY=COP
 ```
 
 Notes:
@@ -284,7 +296,28 @@ Backend:
 - API URL: http://13.221.42.133:3000
 - Database hosted on RDS (PostgreSQL).
 
-Why this helps:
-- Business flow is explicit: each step returns either success or a known error.
-- No exceptions inside use cases, making the application layer pure and predictable.
-- Controllers own the HTTP mapping, keeping domain logic framework‑agnostic.
+  ## Design decisions
+
+- Clean Architecture / Ports & Adapters was chosen to:
+  - Isolate business logic from infrastructure concerns
+  - Make the payment gateway easily swappable
+  - Improve testability of use cases
+
+- Guest checkout via email:
+  - Avoids user accounts to simplify the flow
+  - Customer entity is created or reused by email
+
+## Business rules
+
+- Product stock is decreased only after a SUCCESS payment
+- Failed payments do not affect stock
+- A transaction starts in PENDING state (Frontend starts polling and waits for fail or success and then shows it in the front-end)
+- Transactions are immutable except for status changes
+
+
+## Possible improvements
+
+- Introduce background jobs instead of polling
+- Add authentication for non-guest users
+- Containerize services using Docker Compose
+

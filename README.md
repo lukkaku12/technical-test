@@ -281,6 +281,7 @@ Frontend:
 
 Backend:
 - Deployed on EC2.
+- API URL: http://13.221.42.133:3000
 - Database hosted on RDS (PostgreSQL).
 
 Why this helps:

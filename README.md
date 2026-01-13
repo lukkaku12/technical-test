@@ -12,7 +12,7 @@ entities in `domain`, use cases in `application`, and adapters in `infrastructur
 
 ```
 backend/payment-backend/   NestJS API (TypeORM + PostgreSQL)
-frontend/                Frontend app (if used)
+frontend/                  Frontend app
 ```
 
 The backend lives in `backend/backend`.
@@ -114,6 +114,82 @@ npm test -- --coverage
 ```
 
 ![testing coverage image](image.png)
+![testing coverage frontend image](image-1.png)
+
+## Frontend (React + Vite + TS)
+
+This frontend implements the checkout flow and connects to the backend APIs
+listed below.
+
+## Current flow
+
+1) Step 1 shows a list of products from the backend.
+2) The user selects a product.
+3) Step 2 opens a bottom sheet with card + delivery fields (stored in Redux).
+4) Step 3 shows a summary and creates a transaction.
+5) Step 4 shows status and polls until success/failure.
+6) On success, the flow resets and products are re-fetched.
+
+## Folder structure (what matters so far)
+
+```
+frontend/wompi-front/src/
+  components/
+    ProductScreen.tsx          Product cards list (Step 1)
+    CheckoutFormSheet.tsx      Bottom sheet + form fields (Step 2)
+    SummaryScreen.tsx          Summary and confirm (Step 3)
+    StatusScreen.tsx           Status + retry/return (Step 4)
+  services/
+    api/
+      client.ts                Small fetch wrapper
+      products.ts              GET /products API call
+      transactions.ts          Transaction endpoints
+    env.ts                     Environment helper for tests/runtime
+  store/
+    index.ts                   Redux store setup + persistence
+    hooks.ts                   Typed Redux hooks
+    persist.ts                 localStorage adapter
+    slices/
+      checkoutSlice.ts         Product list + step state
+      formSlice.ts             Form values, errors, sheet open/close
+      transactionSlice.ts      Transaction status + polling
+      wompiSlice.ts            Token + acceptance state
+  utils/
+    validators.ts              Form validation + card brand detection
+  tests/
+    *.test.tsx
+```
+
+## How the frontend connects to the backend
+
+- `GET /products` to show products + available stock.
+- `POST /transactions` to create a PENDING transaction.
+- `POST /transactions/:id/pay` to confirm payment.
+- `GET /transactions/:id` for polling and recovery.
+
+The frontend uses `VITE_API_BASE_URL` to build requests in
+`frontend/wompi-front/src/services/api/client.ts`.
+
+## Environment
+
+Use `frontend/wompi-front/.env.template` as a starting point, then create a
+`frontend/wompi-front/.env` file with your values:
+
+```
+VITE_API_BASE_URL=http://localhost:3000
+VITE_PUBLIC_KEY=pub_stagtest_xxx
+VITE_BASE_URL=
+```
+
+## Frontend scripts
+
+From `frontend/wompi-front`:
+
+```
+npm run dev
+npm run test
+npm run coverage
+```
 
 ## API endpoints
 

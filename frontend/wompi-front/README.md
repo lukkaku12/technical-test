@@ -76,5 +76,6 @@ VITE_BASE_URL=
 
 ```
 npm run dev
-npm run test -- --coverage
+npm run test
+npm run coverage
 ```
